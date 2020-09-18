@@ -1,10 +1,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
 #include <NTPClient.h>
-#include <iostream>
-#include <fstream>
 #include "DHT.h"
-#include "FS.h"
+//#include "FS.h"
+#include <LittleFS.h>
 
 #define DHTPIN 2
 #define DHTTYPE DHT11
@@ -12,8 +11,6 @@
 //LCD SETUP
 int lcd_columns = 16;
 int lcd_rows = 2;
-
-
 
 LiquidCrystal_I2C lcd(0x27, lcd_columns, lcd_rows);
 //
@@ -31,31 +28,33 @@ SPIFFSConfig cfg;
 //
 
 float data[2];
-const char directory_path[] = "/Users/buppo/Documents/Arduino/temperature_data_gatherer/data";
+const char directory_path[] = "/data";
 const char folder[] = "/test";
 
-
-bool save = false;
+bool save = true;
 
 void setup() {
   // put your setup code here, to run once:
 
-  Serial.begin(9600);
+  
+  Serial.begin(57600);
   lcd.init();
   lcd.backlight();
   dht.begin();
 
+  /*
   cfg.setAutoFormat(false);
   SPIFFS.setConfig(cfg);
   SPIFFS.begin();
-  
+  */
+  LittleFS.format();
+  LittleFS.begin();
 
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
 
-  delay(8000);
   lcd.clear();
 
   float *filled_data = gather_data(data);
@@ -64,24 +63,27 @@ void loop() {
 
   lcd.setCursor(2, 0);
   lcd.print(F("Temperature:"));
-  lcd.setCursor(2, 0);
-  lcd.print(F("Temperature:"));
   lcd.setCursor(5, 1);
   lcd.print(temperature);
 
-  delay(8000);
+  delay(2000);
   lcd.clear();
 
   lcd.setCursor(3, 0);
   lcd.print(F("Humidity: "));
   lcd.setCursor(5, 1);
   lcd.print(humidity);
+  delay(2000);
 
   if (save)
   {
-    save_data(temperature, humidity, "/test");
+    save_data(temperature, humidity, "/test.txt");
+//    save = false;
   }
+  
+  delay(2000);
 
+  read_data();
 
 }
 
@@ -111,13 +113,19 @@ float* gather_data(float arr[])
   
 }
 
+void create_txt(String file_name)
+{
+  File f = LittleFS.open(file_name, "a");
+  f.close();
+}
+
 void save_data(float temp, float humid, const char folder_name[])
 {
     // concatenate strings
 
-    String path = String(directory_path) + String(folder_name);
-    
-    File f = SPIFFS.open(path, "a");
+    //String path = String(directory_path) + String(folder_name) + String("/test.txt");
+    String path = String("/test.txt");
+    File f = LittleFS.open(path, "a");
     lcd.clear();
     if (!f) 
     {
@@ -125,17 +133,45 @@ void save_data(float temp, float humid, const char folder_name[])
       lcd.print("Error:");
       lcd.setCursor(0, 1);
       lcd.print("FILE O. FAILED");
-      while(1);
+      delay(10000);
       
     } else
     {
       String temp_str = String(temp);
       String humid_str = String(humid);
-      String to_print = String(temp_str + " " + humid_str);
-      f.println(to_print);
-
+      String to_print = String(temp_str + ";" + humid_str + "\n");
+      const char* final_print = to_print.c_str();
+      lcd.setCursor(0, 0);
+      f.write(final_print);
+      lcd.print("Written to file!");
       f.close();
     }
+}
+
+void read_file(File f)
+{
+  String line = ".";
+  while (line != "")
+  {
+    line = f.readString();
+    Serial.println(line);
+  }
+}
+
+void read_data()
+{
+  String path = String("/test.txt");
+  File f = LittleFS.open(path, "r");
+  read_file(f);
+  f.close();
+
+}
+
+bool check_if_file(String path)
+{
+
+  return LittleFS.exists(path);
+  
 }
 
 String get_folder_name_from_data()
