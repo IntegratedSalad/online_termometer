@@ -1,16 +1,20 @@
 #include <LiquidCrystal_I2C.h>
+#include <ArduinoJson.h>
+#include <SHA256.h>
 #include <ESP8266WiFi.h>
 #include <NTPClient.h>
-#include "DHT.h"
-//#include "FS.h"
 #include <LittleFS.h>
+#include "DHT.h"
 
 #define DHTPIN 2
 #define DHTTYPE DHT11
+#define SALT_LEN 23
 
 //LCD SETUP
 int lcd_columns = 16;
 int lcd_rows = 2;
+
+// LCD SETUP
 
 LiquidCrystal_I2C lcd(0x27, lcd_columns, lcd_rows);
 //
@@ -21,11 +25,9 @@ DHT dht(DHTPIN, DHTTYPE);
 
 //
 
-// SPIFFS SETUP
+// SHA256 SETUP
 
-SPIFFSConfig cfg;
-
-//
+SHA256 sha256;
 
 float data[2];
 const char directory_path[] = "/data";
@@ -41,13 +43,6 @@ void setup() {
   lcd.init();
   lcd.backlight();
   dht.begin();
-
-  /*
-  cfg.setAutoFormat(false);
-  SPIFFS.setConfig(cfg);
-  SPIFFS.begin();
-  */
-  LittleFS.format();
   LittleFS.begin();
 
 }
@@ -78,12 +73,27 @@ void loop() {
   if (save)
   {
     save_data(temperature, humidity, "/test.txt");
-//    save = false;
+    save = false;
   }
   
   delay(2000);
 
-  read_data();
+//  read_data();
+
+  String salt_string = return_contents_file("/data.txt");
+  const char* salt = salt_string.c_str(); 
+//  char* hash = "4822f19a10832003c1c1e33c8b0a5b7120093a0277a1e087ecb3c9568181cf00";
+//  char* hash = "HASH HERE";
+  char* another_hash[32];
+  const char* msg = "PASSWORD HERE";
+
+  /* Try to send the hash, because Serial can't print it in any readable form */
+
+  encrypt(another_hash, msg, salt);
+//  Serial.println("ARE THEY THE SAME: ");
+//  Serial.println(hash == (char*)another_hash);
+//  Serial.println(String(hash).length()); 
+//  Serial.println(String((char*)another_hash).length());
 
 }
 
@@ -143,12 +153,12 @@ void save_data(float temp, float humid, const char folder_name[])
       const char* final_print = to_print.c_str();
       lcd.setCursor(0, 0);
       f.write(final_print);
-      lcd.print("Written to file!");
+      lcd.print("Written to the file!");
       f.close();
     }
 }
 
-void read_file(File f)
+void print_file(File f)
 {
   String line = ".";
   while (line != "")
@@ -158,11 +168,25 @@ void read_file(File f)
   }
 }
 
+String return_contents_file(String path)
+{
+  /* Return array of contents of file. 
+     File has to have one line.
+  */
+  File f = LittleFS.open(path, "r");
+  if (!f)
+  {
+    Serial.println("Couldn't find the file");
+  }
+  
+  return f.readString();
+}
+
 void read_data()
 {
   String path = String("/test.txt");
   File f = LittleFS.open(path, "r");
-  read_file(f);
+  print_file(f);
   f.close();
 
 }
@@ -180,5 +204,26 @@ String get_folder_name_from_data()
   return empty;
 }
 
+void encrypt(void* buffer, const void* message, const void* salt)
+{
+  // to buffer we will save our hash
+  sha256.update(message, (size_t)sizeof(message));
+  sha256.update(salt, (size_t)sizeof(salt));
+  sha256.finalize(buffer, sha256.hashSize());
+  sha256.clear();
+  sha256.reset();
+}
+
 // Measure temp and save temperature at 0.00 6.00 12.00 18.00.
 // At the end of a month, send file to a webpage. 
+
+// Create folder with the month and year format: {year}{month}
+// Write to it starting 0.00, with 6 hour interval.
+// After one day, upload it to the server.
+
+
+/*  Todo:
+ *  1. Hash the password.
+ *  2. Create Json file and append data to it.
+ *  
+ */
