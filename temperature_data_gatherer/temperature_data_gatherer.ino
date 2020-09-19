@@ -66,7 +66,7 @@ void setup() {
 //  LittleFS.format();
   LittleFS.begin();
 
-  wifi_multi.addAP("NETIASPOT-2.4GHz-AEAAF1", "K9JYgj7ddJwq"); // In order to access the site, user must provide a password
+  wifi_multi.addAP("", ""); // In order to access the site, user must provide a password
   Serial.println("Connecting...");
 
   while (wifi_multi.run() != WL_CONNECTED)
