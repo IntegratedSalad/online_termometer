@@ -1,7 +1,11 @@
 #include <LiquidCrystal_I2C.h>
-#include <ArduinoJson.h>
+#include <ArduinoJson.h> // write functions in the seperate file
 #include <SHA256.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
+#include <ESP8266mDNS.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <LittleFS.h>
 #include "DHT.h"
@@ -29,26 +33,85 @@ DHT dht(DHTPIN, DHTTYPE);
 
 SHA256 sha256;
 
+//
+
+// SERVER SETUP
+
+ESP8266WiFiMulti wifi_multi;
+
+ESP8266WebServer server(80);
+
 float data[2];
 const char directory_path[] = "/data";
 const char folder[] = "/test";
+char* hash[32];
+char* hash_to_check[32];
 
 bool save = true;
 
-void setup() {
-  // put your setup code here, to run once:
+void handle_root();
+void handle_not_found();
 
+void setup() {
   
   Serial.begin(57600);
+  Serial.println('\n');
   lcd.init();
   lcd.backlight();
+  
   dht.begin();
+  
   LittleFS.begin();
+
+  wifi_multi.addAP("NETIASPOT-2.4GHz-AEAAF1", ""); // In order to access the site, user must provide a password
+  Serial.println("Connecting...");
+
+  while (wifi_multi.run() != WL_CONNECTED)
+  {
+    delay(250);
+    Serial.print('.');
+  }
+
+  Serial.println('\n');
+  Serial.print("Connected to ");
+  Serial.println(WiFi.SSID());
+  Serial.print("IP Address:\t");
+  Serial.println(WiFi.localIP());
+
+  if (MDNS.begin("esp8266")) // mDNS responder for esp8266.local
+  {
+    Serial.println("mDNS responder started");
+  } else {
+    Serial.println("Error setting up MDNS responder!");
+  }
+
+  server.on("/", handle_root); // handle_root when a client requests URI "/"
+  server.onNotFound(handle_not_found); // handle_not_found when client requests an unknown URI
+
+  server.begin();
+  Serial.println("HTTP server started");
+
+//  String salt_string = return_contents_file("/data.txt");
+//  const char* _salt = salt_string.c_str();
+
+  
+//  char* hash = "4822f19a10832003c1c1e33c8b0a5b7120093a0277a1e087ecb3c9568181cf00";
+//  char* hash_bin = "\xf1\x9a\x10\x83 \x03\xc1\xc1\xe3<\x8b\n[q \t:\x02w\xa1\xe0\x87\xec\xb3\xc9V\x81\x81\xcf\x00";
+
+//  encrypt(another_hash, msg, salt);
+//  File hash_file = LittleFS.open("/hash.txt", "a");
+//  Serial.println(hash);
+//  Serial.print((char*)another_hash);
+////  hash_file.write(String((char*)another_hash)));
+//  Serial.println(String(hash).length()); 
+//  Serial.println(String((char*)another_hash).length());
+//
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+
+  server.handleClient();
 
   lcd.clear();
 
@@ -80,20 +143,10 @@ void loop() {
 
 //  read_data();
 
-  String salt_string = return_contents_file("/data.txt");
-  const char* salt = salt_string.c_str(); 
-//  char* hash = "4822f19a10832003c1c1e33c8b0a5b7120093a0277a1e087ecb3c9568181cf00";
-//  char* hash = "HASH HERE";
-  char* another_hash[32];
-  const char* msg = "PASSWORD HERE";
 
-  /* Try to send the hash, because Serial can't print it in any readable form */
+  /* Input via html form - print hash from msg and hash from input. */
+  /* Which type will have the array with hash? */
 
-  encrypt(another_hash, msg, salt);
-//  Serial.println("ARE THEY THE SAME: ");
-//  Serial.println(hash == (char*)another_hash);
-//  Serial.println(String(hash).length()); 
-//  Serial.println(String((char*)another_hash).length());
 
 }
 
@@ -214,6 +267,21 @@ void encrypt(void* buffer, const void* message, const void* salt)
   sha256.reset();
 }
 
+const char* get_hash()
+{
+  String str = return_contents_file("/hash.txt");
+  const char* hash = str.c_str();
+  return hash;
+}
+
+const char* get_salt()
+{
+  String salt_string = return_contents_file("/data.txt");
+  const char* salt = salt_string.c_str();
+  return salt;
+}
+
+
 // Measure temp and save temperature at 0.00 6.00 12.00 18.00.
 // At the end of a month, send file to a webpage. 
 
@@ -225,5 +293,5 @@ void encrypt(void* buffer, const void* message, const void* salt)
 /*  Todo:
  *  1. Hash the password.
  *  2. Create Json file and append data to it.
- *  
+ *  3. Move file functions into seperate file
  */
