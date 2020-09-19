@@ -7,7 +7,7 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <NTPClient.h>
-#include <LittleFS.h>
+#include "LittleFS.h"
 #include "DHT.h"
 
 #define DHTPIN 2
@@ -49,8 +49,8 @@ char* hash_to_check[32];
 
 bool save = true;
 
-void handle_root();
-void handle_not_found();
+String get_content_type(String filename);
+bool handle_file_read(String path);
 
 void setup() {
   
@@ -60,10 +60,13 @@ void setup() {
   lcd.backlight();
   
   dht.begin();
-  
+//  SPIFFSConfig cfg;
+//  cfg.setAutoFormat(false);
+//  SPIFFS.setConfig(cfg);
+//  LittleFS.format();
   LittleFS.begin();
 
-  wifi_multi.addAP("NETIASPOT-2.4GHz-AEAAF1", ""); // In order to access the site, user must provide a password
+  wifi_multi.addAP("NETIASPOT-2.4GHz-AEAAF1", "K9JYgj7ddJwq"); // In order to access the site, user must provide a password
   Serial.println("Connecting...");
 
   while (wifi_multi.run() != WL_CONNECTED)
@@ -85,8 +88,21 @@ void setup() {
     Serial.println("Error setting up MDNS responder!");
   }
 
-  server.on("/", handle_root); // handle_root when a client requests URI "/"
-  server.onNotFound(handle_not_found); // handle_not_found when client requests an unknown URI
+  server.on("/downloaddata", HTTP_GET, []()
+  {
+    if (!handle_file_read("/upload.html"))
+    {
+      server.send(404, "text/plain", "404: Not Found");
+    }
+  });
+
+  server.onNotFound([]() // Handle requests by sending files | Inline function
+  {
+    if (!handle_file_read(server.uri()))
+    {
+      server.send(404, "text/plain", "404: Not Found");
+    }
+  });
 
   server.begin();
   Serial.println("HTTP server started");
@@ -138,10 +154,16 @@ void loop() {
     save_data(temperature, humidity, "/test.txt");
     save = false;
   }
-  
+
+  Serial.println(check_if_file("/index.html"));
+  Serial.println(check_if_file("/data.txt"));
+  File t = LittleFS.open("/data.txt", "r");
+  print_file(t);
+  t.close();
   delay(2000);
 
-//  read_data();
+  read_data();
+
 
 
   /* Input via html form - print hash from msg and hash from input. */
