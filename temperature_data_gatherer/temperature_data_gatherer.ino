@@ -84,7 +84,7 @@ void setup() {
 //  LittleFS.format();
   LittleFS.begin();
 
-  wifi_multi.addAP("NETIASPOT-2.4GHz-AEAAF1", "K9JYgj7ddJwq"); // In order to access the site, user must provide a password
+  wifi_multi.addAP("", ""); // In order to access the site, user must provide a password
   Serial.println("Connecting...");
 
   while (wifi_multi.run() != WL_CONNECTED)
@@ -372,5 +372,4 @@ const char* get_salt()
  *     server.send(200, "text/plain" String(file)) DONE
  *  5. Make adding files via webpage possible <- is it really necessary?
  *  6. I want the site to show me actual temperature and humidity.
- *  7. Compress results.txt
  */
