@@ -372,4 +372,5 @@ const char* get_salt()
  *     server.send(200, "text/plain" String(file)) DONE
  *  5. Make adding files via webpage possible <- is it really necessary?
  *  6. I want the site to show me actual temperature and humidity.
+ *  7. Compress results.txt
  */
