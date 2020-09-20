@@ -6,7 +6,9 @@
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-#include <NTPClient.h>
+#include <TimeLib.h>
+#include <WiFiUdp.h>
+#include <vector> // for returning file contents
 #include "LittleFS.h"
 #include "DHT.h"
 
@@ -41,6 +43,19 @@ ESP8266WiFiMulti wifi_multi;
 
 ESP8266WebServer server(80);
 
+//
+
+// NTP TIME SETUP
+
+static const char ntp_server_name[] = "0.pl.pool.ntp.org";
+
+const int time_zone = 2;
+
+WiFiUDP udp;
+unsigned int local_port = 8888;
+
+//
+
 float data[2];
 const char directory_path[] = "/data";
 const char folder[] = "/test";
@@ -51,6 +66,9 @@ bool save = true;
 
 String get_content_type(String filename);
 bool handle_file_read(String path);
+std::vector<String> return_contents_file(String path);
+time_t get_ntp_time();
+void send_ntp_packet(IPAddress &address);
 
 void setup() {
   
@@ -88,12 +106,16 @@ void setup() {
     Serial.println("Error setting up MDNS responder!");
   }
 
-  server.on("/downloaddata", HTTP_GET, []()
-  {
-    if (!handle_file_read("/upload.html"))
+  server.on("/download", HTTP_GET, []()
+  {   
+    String contents_str;
+    std::vector<String> contents_of_test_file;
+    contents_of_test_file = return_contents_file("/test.txt");
+    for (std::vector<String>::iterator i = contents_of_test_file.begin(); i != contents_of_test_file.end(); ++i)
     {
-      server.send(404, "text/plain", "404: Not Found");
+      contents_str += *i;
     }
+    server.send(200, "text/plain", contents_str);
   });
 
   server.onNotFound([]() // Handle requests by sending files | Inline function
@@ -106,6 +128,12 @@ void setup() {
 
   server.begin();
   Serial.println("HTTP server started");
+
+  Serial.println("Statring UDP");
+  udp.begin(local_port);
+  setSyncProvider(get_ntp_time);
+  setSyncInterval(300);
+  
 
 //  String salt_string = return_contents_file("/data.txt");
 //  const char* _salt = salt_string.c_str();
@@ -149,21 +177,25 @@ void loop() {
   lcd.print(humidity);
   delay(2000);
 
+  Serial.println(hour());
+  Serial.println(day());
+  Serial.println(month());
+  Serial.println(year());
+  
   if (save)
   {
     save_data(temperature, humidity, "/test.txt");
-    save = false;
+//    save = false;
   }
 
-  Serial.println(check_if_file("/index.html"));
-  Serial.println(check_if_file("/data.txt"));
-  File t = LittleFS.open("/data.txt", "r");
-  print_file(t);
-  t.close();
+//  Serial.println(check_if_file("/index.html"));
+//  Serial.println(check_if_file("/data.txt"));
+//  File t = LittleFS.open("/data.txt", "r");
+//  print_file(t);
+//  t.close();
   delay(2000);
 
-  read_data();
-
+//  read_data();
 
 
   /* Input via html form - print hash from msg and hash from input. */
@@ -228,7 +260,7 @@ void save_data(float temp, float humid, const char folder_name[])
       const char* final_print = to_print.c_str();
       lcd.setCursor(0, 0);
       f.write(final_print);
-      lcd.print("Written to the file!");
+      lcd.print("Written to file.");
       f.close();
     }
 }
@@ -243,18 +275,29 @@ void print_file(File f)
   }
 }
 
-String return_contents_file(String path)
+std::vector<String> return_contents_file(String path)
 {
   /* Return array of contents of file. 
-     File has to have one line.
   */
   File f = LittleFS.open(path, "r");
   if (!f)
   {
     Serial.println("Couldn't find the file");
+    std::vector<String> empty;
+    return empty;
+  } else 
+  {
+    String line = ".";
+    std::vector<String> contents_vector;
+    
+    while (line != "")
+    {
+      line = f.readString();
+      contents_vector.push_back(line);
+    }
+
+    return contents_vector;
   }
-  
-  return f.readString();
 }
 
 void read_data()
@@ -291,14 +334,14 @@ void encrypt(void* buffer, const void* message, const void* salt)
 
 const char* get_hash()
 {
-  String str = return_contents_file("/hash.txt");
+  String str = return_contents_file("/hash.txt")[0];
   const char* hash = str.c_str();
   return hash;
 }
 
 const char* get_salt()
 {
-  String salt_string = return_contents_file("/data.txt");
+  String salt_string = return_contents_file("/data.txt")[0];
   const char* salt = salt_string.c_str();
   return salt;
 }
@@ -313,7 +356,13 @@ const char* get_salt()
 
 
 /*  Todo:
- *  1. Hash the password.
- *  2. Create Json file and append data to it.
- *  3. Move file functions into seperate file
+ *  1. Hash the password. done, not needed now
+ *  2. Get time and date.
+ *  3. Create Json file and append data to it.
+ *  4. Move file functions into seperate file
+ *  5. Add download button to download the data -> it will just print contents to the site
+ *     server.on(/download)
+ *     server.send(200, "text/plain" String(file)) done
+ *  6. Make adding files via webpage possible <- is it really necessary?
+ *  7. I want the site to show me actual temperature and humidity.
  */
