@@ -84,7 +84,7 @@ void setup() {
 //  LittleFS.format();
   LittleFS.begin();
 
-  wifi_multi.addAP("", ""); // In order to access the site, user must provide a password
+  wifi_multi.addAP("NETIASPOT-2.4GHz-AEAAF1", "K9JYgj7ddJwq"); // In order to access the site, user must provide a password
   Serial.println("Connecting...");
 
   while (wifi_multi.run() != WL_CONNECTED)
@@ -177,10 +177,10 @@ void loop() {
   lcd.print(humidity);
   delay(2000);
 
-  Serial.println(hour());
-  Serial.println(day());
-  Serial.println(month());
-  Serial.println(year());
+//  Serial.println(hour());
+//  Serial.println(day());
+//  Serial.println(month());
+//  Serial.println(year());
   
   if (save)
   {
@@ -240,7 +240,6 @@ void save_data(float temp, float humid, const char folder_name[])
 {
     // concatenate strings
 
-    //String path = String(directory_path) + String(folder_name) + String("/test.txt");
     String path = String("/test.txt");
     File f = LittleFS.open(path, "a");
     lcd.clear();
@@ -254,14 +253,23 @@ void save_data(float temp, float humid, const char folder_name[])
       
     } else
     {
-      String temp_str = String(temp);
+
+      int y = year();
+      String m = monthStr(month());
+      String d = dayStr(weekday());
+      int h = hour();
+      
+      String temp_str  = String(temp);
       String humid_str = String(humid);
-      String to_print = String(temp_str + ";" + humid_str + "\n");
+      String year_str  = String(y);
+      String hour_str  = String(h);
+      String to_print  = String(temp_str + ";" + humid_str + ";" + year_str + ";" + m + ";" + d + ";" + hour_str + "\n");
       const char* final_print = to_print.c_str();
       lcd.setCursor(0, 0);
       f.write(final_print);
       lcd.print("Written to file.");
       f.close();
+      
     }
 }
 
@@ -356,13 +364,12 @@ const char* get_salt()
 
 
 /*  Todo:
- *  1. Hash the password. done, not needed now
- *  2. Get time and date.
- *  3. Create Json file and append data to it.
- *  4. Move file functions into seperate file
- *  5. Add download button to download the data -> it will just print contents to the site
+ *  1. Hash the password. DONE, not needed now
+ *  2. Get time and date. DONE
+ *  3. Move file functions into seperate file
+ *  4. Add download button to download the data -> it will just print contents to the site
  *     server.on(/download)
- *     server.send(200, "text/plain" String(file)) done
- *  6. Make adding files via webpage possible <- is it really necessary?
- *  7. I want the site to show me actual temperature and humidity.
+ *     server.send(200, "text/plain" String(file)) DONE
+ *  5. Make adding files via webpage possible <- is it really necessary?
+ *  6. I want the site to show me actual temperature and humidity.
  */
