@@ -37,7 +37,7 @@ def get_temp(month):
 		l, h = 0, 18
 	if month == "November":
 		l, h = -5, 15
-	if month == "D":
+	if month == "December":
 		l, h = -10, 8
 
 	return round(random.uniform(l, h), 1)
@@ -63,7 +63,7 @@ def main(yrs):
 	mcycle = cycle(months)
 	ycycle = cycle(years)
 
-	with open("dummydata.txt", mode='a') as f:
+	with open(file_name, mode='a') as f:
 
 		d = next(dcycle)
 		nd = next(ndcycle)
@@ -79,7 +79,7 @@ def main(yrs):
 
 			h = next(hcycle)
 
-			to_write = f"{str(temp)};{str(humid)};{str(y)};{str(m)};{str(d)};{str(h)}\n"
+			to_write = f"{str(temp)};{str(humid)};{str(y)}.{str(m)}.{str(nd)};{str(d)};{str(h)}\n"
 
 			if h == "0.00":
 				d = next(dcycle)
@@ -88,7 +88,7 @@ def main(yrs):
 			if nd == 31 and h == "0.00":
 				m = next(mcycle)
 
-			if m == "December" and h == "0.00":
+			if m == "January" and h == "0.00" and nd == 1:
 				y = next(ycycle)
 
 			f.write(to_write)

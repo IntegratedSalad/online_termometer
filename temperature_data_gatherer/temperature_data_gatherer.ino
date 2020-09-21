@@ -1,5 +1,4 @@
 #include <LiquidCrystal_I2C.h>
-#include <ArduinoJson.h> // write functions in the seperate file
 #include <SHA256.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
@@ -114,6 +113,7 @@ void setup() {
     for (std::vector<String>::iterator i = contents_of_test_file.begin(); i != contents_of_test_file.end(); ++i)
     {
       contents_str += *i;
+      Serial.println(contents_str);
     }
     server.send(200, "text/plain", contents_str);
   });
@@ -190,11 +190,16 @@ void loop() {
 
 //  Serial.println(check_if_file("/index.html"));
 //  Serial.println(check_if_file("/data.txt"));
-//  File t = LittleFS.open("/data.txt", "r");
-//  print_file(t);
-//  t.close();
+//  File f = LittleFS.open("/test.txt", "r");
+//  print_file(f);
+//  f.close();
+////  t.close();
+
+
   delay(2000);
 
+
+  
 //  read_data();
 
 
@@ -257,13 +262,15 @@ void save_data(float temp, float humid, const char folder_name[])
       int y = year();
       String m = monthStr(month());
       String d = dayStr(weekday());
+      String nd = String(day());
       int h = hour();
       
       String temp_str  = String(temp);
       String humid_str = String(humid);
       String year_str  = String(y);
       String hour_str  = String(h);
-      String to_print  = String(temp_str + ";" + humid_str + ";" + year_str + ";" + m + ";" + d + ";" + hour_str + "\n");
+      
+      String to_print  = String(temp_str + ";" + humid_str + ";" + year_str + "." + m + "." + nd + ";" + d + ";" + hour_str + ":00" + "\n");
       const char* final_print = to_print.c_str();
       lcd.setCursor(0, 0);
       f.write(final_print);
